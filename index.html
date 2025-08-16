@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ThingSpeak Hypnotic IoT Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/gsap@3.12.5/dist/gsap.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #0d0d2b 0%, #1a1a3d 100%);
+      color: #e0e0ff;
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+    }
+    .card {
+      background: rgba(20, 20, 40, 0.8);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 15px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
+      transition: transform 0.3s ease;
+    }
+    .card:hover {
+      transform: translateY(-5px);
+    }
+    .chart-container {
+      position: relative;
+      height: 350px;
+      padding: 20px;
+    }
+    .glow-text {
+      text-shadow: 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.4);
+    }
+    .gradient-text {
+      background: linear-gradient(45deg, #00f2fe, #4facfe);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .data-card {
+      background: linear-gradient(45deg, #1e1e3d, #2a2a5e);
+      border-radius: 10px;
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+    .data-card:hover {
+      box-shadow: 0 0 20px rgba(0, 255, 255, 0.5);
+    }
+    canvas {
+      border-radius: 10px;
+    }
+    .particle {
+      position: absolute;
+      width: 5px;
+      height: 5px;
+      background: rgba(0, 255, 255, 0.5);
+      border-radius: 50%;
+      pointer-events: none;
+      animation: float 6s infinite ease-in-out;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-20px); }
+    }
+  </style>
+</head>
+<body>
+  <div class="container mx-auto py-8 relative">
+    <div class="flex justify-between items-center mb-4">
+      <h1 class="text-5xl font-bold text-center glow-text gradient-text">🌌 Hypnotic IoT Dashboard</h1>
+      <button id="settingsBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">Customize</button>
+    </div>
+
+    <!-- Live Values in Single Div -->
+    <div class="data-card mb-12">
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div class="text-center">
+          <h3 class="text-xl font-semibold">Air Temp</h3>
+          <h2 id="airTempVal" class="text-4xl font-bold glow-text">-- °C</h2>
+        </div>
+        <div class="text-center">
+          <h3 class="text-xl font-semibold">Air Moisture</h3>
+          <h2 id="airMoistVal" class="text-4xl font-bold glow-text">-- %</h2>
+        </div>
+        <div class="text-center">
+          <h3 class="text-xl font-semibold">Soil Temp</h3>
+          <h2 id="soilTempVal" class="text-4xl font-bold glow-text">-- °C</h2>
+        </div>
+        <div class="text-center">
+          <h3 class="text-xl font-semibold">Soil pH</h3>
+          <h2 id="soilPhVal" class="text-4xl font-bold glow-text">--</h2>
+        </div>
+      </div>
+    </div>
+
+    <!-- Primary Channel Charts -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+      <div class="card" id="tempCard">
+        <h5 id="tempTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="tempChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="humCard">
+        <h5 id="humTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="humChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="soilTempCard">
+        <h5 id="soilTempTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="soilTempChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="rainCard">
+        <h5 id="rainTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="rainChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="phCard">
+        <h5 id="phTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="phChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="npkCard">
+        <h5 id="npkTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="npkChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="ecCard">
+        <h5 id="ecTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="ecChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Derived Channel Charts -->
+    <h2 class="text-3xl font-semibold text-center mb-6 glow-text gradient-text">Mean & Median Historical Data</h2>
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12">
+      <div class="card" id="meanSoilTemp1Card">
+        <h5 id="meanSoilTemp1Title" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanSoilTemp1Chart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="medianSoilTempCard">
+        <h5 id="medianSoilTempTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="medianSoilTempChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="meanHumidityCard">
+        <h5 id="meanHumidityTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanHumidityChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="medianHumidityCard">
+        <h5 id="medianHumidityTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="medianHumidityChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="meanSoilTemp2Card">
+        <h5 id="meanSoilTemp2Title" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanSoilTemp2Chart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="meanPhCard">
+        <h5 id="meanPhTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanPhChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="meanNpkCard">
+        <h5 id="meanNpkTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanNpkChart"></canvas>
+        </div>
+      </div>
+      <div class="card" id="meanEcCard">
+        <h5 id="meanEcTitle" class="text-2xl font-semibold pl-6 pt-4 glow-text"></h5>
+        <div class="chart-container">
+          <canvas id="meanEcChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="fixed inset-0 bg-black bg-opacity-50 hidden flex items-center justify-center z-50">
+      <div class="bg-gray-900 p-6 rounded-lg text-white w-96">
+        <h2 class="text-2xl mb-4">Customize Dashboard</h2>
+        <div class="space-y-2">
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="tempCard"> Temperature Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="humCard"> Humidity Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="soilTempCard"> Soil Temperature Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="rainCard"> Rain Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="phCard"> pH Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="npkCard"> NPK Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="ecCard"> EC Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanSoilTemp1Card"> mean_air_temp Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="medianSoilTempCard"> median_air_temp Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanHumidityCard"> mean_humidity Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="medianHumidityCard"> median_humidity Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanSoilTemp2Card"> mean soil temp Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanPhCard"> mean PH Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanNpkCard"> mean NPK Chart</label>
+          <label class="flex items-center"><input type="checkbox" class="mr-2" data-card="meanEcCard"> mean EC Chart</label>
+        </div>
+        <button id="closeModal" class="mt-4 bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600 w-full">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const channelID = 3036073;
+    const derivedChannelID = 3036092;
+
+    // Particle Animation
+    function createParticles() {
+      const container = document.querySelector('.container');
+      for (let i = 0; i < 50; i++) {
+        const particle = document.createElement('div');
+        particle.classList.add('particle');
+        particle.style.left = `${Math.random() * 100}%`;
+        particle.style.top = `${Math.random() * 100}%`;
+        particle.style.animationDelay = `${Math.random() * 6}s`;
+        container.appendChild(particle);
+      }
+    }
+    createParticles();
+
+    // GSAP Animations
+    gsap.from('.data-card', { opacity: 0, y: 50, stagger: 0.2, duration: 1, ease: 'power3.out' });
+    gsap.from('.card', { opacity: 0, scale: 0.8, stagger: 0.3, duration: 1.5, ease: 'elastic.out(1, 0.5)' });
+
+    // Chart.js Configuration
+    const chartOptions = {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: { size: 16 },
+          bodyFont: { size: 14 },
+          cornerRadius: 10,
+          padding: 12,
+        },
+      },
+      scales: {
+        x: {
+          type: 'time',
+          time: { unit: 'minute' },
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          ticks: { color: '#e0e0ff' },
+        },
+        y: {
+          grid: { color: 'rgba(255, 255, 255, 0.1)' },
+          ticks: { color: '#e0e0ff' },
+        },
+      },
+      animation: {
+        duration: 2000,
+        easing: 'easeOutElastic',
+      },
+    };
+
+    // Fetch Channel Fields
+    async function fetchChannelFields() {
+      const url = `https://api.thingspeak.com/channels/${channelID}.json`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const fieldNames = {
+        field1: data.field1 || 'Temperature',
+        field2: data.field2 || 'Humidity',
+        field3: data.field3 || 'Soil Temperature',
+        field4: data.field4 || 'Rain',
+        field5: data.field5 || 'pH Level',
+        field6: data.field6 || 'NPK',
+        field7: data.field7 || 'EC'
+      };
+      document.getElementById('tempTitle').textContent = fieldNames.field1;
+      document.getElementById('humTitle').textContent = fieldNames.field2;
+      document.getElementById('soilTempTitle').textContent = fieldNames.field3;
+      document.getElementById('rainTitle').textContent = fieldNames.field4;
+      document.getElementById('phTitle').textContent = fieldNames.field5;
+      document.getElementById('npkTitle').textContent = fieldNames.field6;
+      document.getElementById('ecTitle').textContent = fieldNames.field7;
+    }
+
+    // Fetch Derived Channel Fields
+    async function fetchDerivedFields() {
+      const url = `https://api.thingspeak.com/channels/${derivedChannelID}.json`;
+      const res = await fetch(url);
+      const data = await res.json();
+      const fieldNames = {
+        field1: data.field1 || 'mean_air_temp',
+        field2: data.field2 || 'median_air_temp',
+        field3: data.field3 || 'mean_humidity',
+        field4: data.field4 || 'median_humidity',
+        field5: data.field5 || 'mean soil temp',
+        field6: data.field6 || 'mean PH',
+        field7: data.field7 || 'mean NPK values',
+        field8: data.field8 || 'mean EC'
+      };
+      document.getElementById('meanSoilTemp1Title').textContent = fieldNames.field1;
+      document.getElementById('medianSoilTempTitle').textContent = fieldNames.field2;
+      document.getElementById('meanHumidityTitle').textContent = fieldNames.field3;
+      document.getElementById('medianHumidityTitle').textContent = fieldNames.field4;
+      document.getElementById('meanSoilTemp2Title').textContent = fieldNames.field5;
+      document.getElementById('meanPhTitle').textContent = fieldNames.field6;
+      document.getElementById('meanNpkTitle').textContent = fieldNames.field7;
+      document.getElementById('meanEcTitle').textContent = fieldNames.field8;
+    }
+
+    // Fetch and Render Data
+    async function fetchData() {
+      const url = `https://api.thingspeak.com/channels/${channelID}/feeds.json?results=50`;
+      const derivedUrl = `https://api.thingspeak.com/channels/${derivedChannelID}/feeds.json?results=50`;
+      const [res, derivedRes] = await Promise.all([fetch(url), fetch(derivedUrl)]);
+      const data = await res.json();
+      const derivedData = await derivedRes.json();
+      const feeds = data.feeds;
+      const derivedFeeds = derivedData.feeds;
+
+      // Primary Data
+      const tempData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field1) })).filter(d => !isNaN(d.y));
+      const humData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field2) })).filter(d => !isNaN(d.y));
+      const soilTempData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field3) })).filter(d => !isNaN(d.y));
+      const rainData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field4) })).filter(d => !isNaN(d.y));
+      const phData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field5) })).filter(d => !isNaN(d.y));
+      const npkData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field6) })).filter(d => !isNaN(d.y));
+      const ecData = feeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field7) })).filter(d => !isNaN(d.y));
+
+      // Live Values
+      document.getElementById('airTempVal').textContent = tempData.length > 0 ? tempData[tempData.length - 1].y.toFixed(1) + ' °C' : '-- °C';
+      document.getElementById('airMoistVal').textContent = humData.length > 0 ? humData[humData.length - 1].y.toFixed(1) + ' %' : '-- %';
+      document.getElementById('soilTempVal').textContent = soilTempData.length > 0 ? soilTempData[soilTempData.length - 1].y.toFixed(1) + ' °C' : '-- °C';
+      document.getElementById('soilPhVal').textContent = phData.length > 0 ? phData[phData.length - 1].y.toFixed(1) : '--';
+
+      // Primary Charts
+      new Chart(document.getElementById('tempChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Temperature',
+            data: tempData,
+            borderColor: '#ff4040',
+            backgroundColor: 'rgba(255, 64, 64, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ff6666',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('humChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Humidity',
+            data: humData,
+            borderColor: '#00aaff',
+            backgroundColor: 'rgba(0, 170, 255, 0.5)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#00ccff',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 100 } } },
+      });
+
+      new Chart(document.getElementById('soilTempChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Soil Temperature',
+            data: soilTempData,
+            borderColor: '#00cc44',
+            backgroundColor: 'rgba(0, 204, 68, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#00ff88',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('rainChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'Rain',
+            data: rainData,
+            borderColor: '#ff9900',
+            backgroundColor: 'rgba(255, 153, 0, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ffcc00',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('phChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'pH Level',
+            data: phData,
+            borderColor: '#8800cc',
+            backgroundColor: 'rgba(136, 0, 204, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#cc00ff',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 14 } } },
+      });
+
+      new Chart(document.getElementById('npkChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'NPK',
+            data: npkData,
+            borderColor: '#00ff88',
+            backgroundColor: 'rgba(0, 255, 136, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#33ffaa',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 200 } } },
+      });
+
+      new Chart(document.getElementById('ecChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'EC',
+            data: ecData,
+            borderColor: '#ffcc00',
+            backgroundColor: 'rgba(255, 204, 0, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ffee33',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 10 } } },
+      });
+
+      // Derived Data
+      const meanSoilTemp1Data = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field1) })).filter(d => !isNaN(d.y));
+      const medianSoilTempData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field2) })).filter(d => !isNaN(d.y));
+      const meanHumidityData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field3) })).filter(d => !isNaN(d.y));
+      const medianHumidityData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field4) })).filter(d => !isNaN(d.y));
+      const meanSoilTemp2Data = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field5) })).filter(d => !isNaN(d.y));
+      const meanPhData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field6) })).filter(d => !isNaN(d.y));
+      const meanNpkData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field7) })).filter(d => !isNaN(d.y));
+      const meanEcData = derivedFeeds.map(f => ({ x: new Date(f.created_at), y: parseFloat(f.field8) })).filter(d => !isNaN(d.y));
+
+      // Derived Charts
+      new Chart(document.getElementById('meanSoilTemp1Chart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean_air_temp',
+            data: meanSoilTemp1Data,
+            borderColor: '#d62020',
+            backgroundColor: 'rgba(214, 32, 32, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ff4040',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('medianSoilTempChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'median_air_temp',
+            data: medianSoilTempData,
+            borderColor: '#00aaff',
+            backgroundColor: 'rgba(0, 170, 255, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#00ccff',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('meanHumidityChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean_humidity',
+            data: meanHumidityData,
+            borderColor: '#00cc44',
+            backgroundColor: 'rgba(0, 204, 68, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#00ff88',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 100 } } },
+      });
+
+      new Chart(document.getElementById('medianHumidityChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'median_humidity',
+            data: medianHumidityData,
+            borderColor: '#ff9900',
+            backgroundColor: 'rgba(255, 153, 0, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ffcc00',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 100 } } },
+      });
+
+      new Chart(document.getElementById('meanSoilTemp2Chart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean soil temp',
+            data: meanSoilTemp2Data,
+            borderColor: '#ff4040',
+            backgroundColor: 'rgba(255, 64, 64, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ff6666',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 50 } } },
+      });
+
+      new Chart(document.getElementById('meanPhChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean PH',
+            data: meanPhData,
+            borderColor: '#8800cc',
+            backgroundColor: 'rgba(136, 0, 204, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#cc00ff',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 14 } } },
+      });
+
+      new Chart(document.getElementById('meanNpkChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean NPK',
+            data: meanNpkData,
+            borderColor: '#00ff88',
+            backgroundColor: 'rgba(0, 255, 136, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#33ffaa',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 200 } } },
+      });
+
+      new Chart(document.getElementById('meanEcChart'), {
+        type: 'line',
+        data: {
+          datasets: [{
+            label: 'mean EC',
+            data: meanEcData,
+            borderColor: '#ffcc00',
+            backgroundColor: 'rgba(255, 204, 0, 0.3)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 5,
+            pointHoverRadius: 8,
+            pointBackgroundColor: '#ffee33',
+          }],
+        },
+        options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, suggestedMin: 0, suggestedMax: 10 } } },
+      });
+    }
+
+    // Initialize Visibility
+    function initVisibility() {
+      const cards = [
+        'tempCard', 'humCard', 'soilTempCard', 'rainCard', 'phCard', 'npkCard', 'ecCard',
+        'meanSoilTemp1Card', 'medianSoilTempCard', 'meanHumidityCard', 'medianHumidityCard',
+        'meanSoilTemp2Card', 'meanPhCard', 'meanNpkCard', 'meanEcCard'
+      ];
+      cards.forEach(cardId => {
+        const checked = localStorage.getItem(`chart_${cardId}`) !== 'false';
+        document.getElementById(cardId).classList.toggle('hidden', !checked);
+        const checkbox = document.querySelector(`input[data-card="${cardId}"]`);
+        if (checkbox) checkbox.checked = checked;
+      });
+    }
+
+    // Settings Modal Events
+    document.getElementById('settingsBtn').addEventListener('click', () => {
+      document.getElementById('settingsModal').classList.remove('hidden');
+    });
+
+    document.getElementById('closeModal').addEventListener('click', () => {
+      document.getElementById('settingsModal').classList.add('hidden');
+    });
+
+    const checkboxes = document.querySelectorAll('#settingsModal input[type="checkbox"]');
+    checkboxes.forEach(checkbox => {
+      checkbox.addEventListener('change', (e) => {
+        const cardId = e.target.dataset.card;
+        document.getElementById(cardId).classList.toggle('hidden', !e.target.checked);
+        localStorage.setItem(`chart_${cardId}`, e.target.checked);
+      });
+    });
+
+    // Load Data and Initialize
+    fetchChannelFields();
+    fetchDerivedFields();
+    fetchData().then(() => {
+      initVisibility();
+    });
+    setInterval(fetchData, 15000);
+  </script>
+</body>
+</html>
