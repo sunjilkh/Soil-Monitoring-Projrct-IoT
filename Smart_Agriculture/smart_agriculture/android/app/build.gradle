@@ -1,0 +1,48 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+android {
+    namespace = "com.example.smart_agriculture"
+    compileSdk = 35 // Updated to match compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+        coreLibraryDesugaringEnabled true // Enable core library desugaring
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        applicationId = "com.example.smart_agriculture"
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+        minSdkVersion 23 // Your current minSdkVersion
+        compileSdkVersion 35
+        targetSdkVersion 35
+        multiDexEnabled true // Enable MultiDex for safety
+    }
+
+    buildTypes {
+        release {
+            signingConfig = signingConfigs.debug
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+dependencies {
+    coreLibraryDesugaring 'com.android.tools:desugar_jdk_libs:2.0.4' // Add desugaring library
+    implementation 'androidx.multidex:multidex:2.0.1' // Add MultiDex dependency
+}
+
+apply plugin: 'com.google.gms.google-services'

@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "274581856496",
+    "firebase_url": "https://smart-agriculture-system-c8361-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "smart-agriculture-system-c8361",
+    "storage_bucket": "smart-agriculture-system-c8361.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:274581856496:android:13a3bba30bbd7b526ee235",
+        "android_client_info": {
+          "package_name": "com.example.smart_agriculture"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDEGAZRODaCA_DcnXQyFuq4PotKLu4ELM8"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
